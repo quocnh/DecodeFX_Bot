@@ -88,7 +88,12 @@ class TelegramInterface:
         Setup message handlers for Telegram
         """
         self.application.add_handler(CommandHandler("start", self.start))
-        self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+        # self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+        # Add filters for both private and group messages
+        self.application.add_handler(MessageHandler(
+            (filters.TEXT & ~filters.COMMAND & (filters.ChatType.GROUPS | filters.ChatType.PRIVATE)),
+            self.handle_message
+        ))
 
     # async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
     #     """
@@ -121,13 +126,34 @@ class TelegramInterface:
         """
         await update.message.reply_text(error_message)
 
+    # async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #     """
+    #     Handle incoming messages
+    #     """
+    #     query = update.message.text
+    #     response, confidence = self.bot.find_best_response(query)
+    #     await update.message.reply_text(response)
+
+    
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
-        Handle incoming messages
+        Handle incoming messages from both private chats and groups
         """
+        # Log the message type and chat ID for debugging
+        chat_type = update.message.chat.type
+        chat_id = update.message.chat_id
+        
         query = update.message.text
         response, confidence = self.bot.find_best_response(query)
-        await update.message.reply_text(response)
+        
+        # Optional: Add different handling for group vs private messages
+        if chat_type == 'group' or chat_type == 'supergroup':
+            # Only respond if the bot is mentioned or message starts with a specific prefix
+            if update.message.text.startswith('/') or f'@{context.bot.username}' in update.message.text:
+                await update.message.reply_text(response)
+        else:
+            # In private chats, always respond
+            await update.message.reply_text(response)
 
     async def start_bot(self):
         """
