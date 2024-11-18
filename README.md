@@ -37,7 +37,7 @@ pip install python-telegram-bot sentence-transformers scikit-learn pandas numpy
 
 ### 4. Add your bot token
 export TELEGRAM_BOT_TOKEN="your_token_here"
-```
 
 # 5. Run the bot
 python customer_service_bot.py
+```
