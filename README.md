@@ -33,7 +33,7 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 ### 3. Install requirements
-pip install python-telegram-bot sentence-transformers scikit-learn pandas numpy
+pip install telebot python-telegram-bot sentence-transformers scikit-learn pandas numpy
 
 ### 4. Add your bot token
 export TELEGRAM_BOT_TOKEN="your_token_here"
