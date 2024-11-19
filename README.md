@@ -31,6 +31,7 @@ cd decodefx-bot
 ### 2. Create a virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+or use Anaconda
 
 ### 3. Install requirements
 pip install telebot python-telegram-bot sentence-transformers scikit-learn pandas numpy
