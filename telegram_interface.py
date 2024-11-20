@@ -60,6 +60,37 @@ class TelegramInterface:
         await update.message.reply_text(help_message)
         self.logger.info(f"Help command received from user {update.effective_user.id}")
 
+    # async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    #     """
+    #     Handle incoming messages from both private chats and groups
+    #     """
+    #     chat_type = update.message.chat.type
+    #     chat_id = update.message.chat_id
+    #     user_id = update.effective_user.id
+    #     query = update.message.text
+
+    #     self.logger.info(f"Received message from user {user_id} in {chat_type} chat {chat_id}: {query}")
+
+    #     try:
+    #         # Handle group messages differently
+    #         if chat_type in ['group', 'supergroup']:
+    #             if not (query.startswith('/') or f'@{context.bot.username}' in query):
+    #                 return
+                
+    #         response, confidence = self.bot.find_best_response(query)
+            
+    #         self.logger.info(f"Generated response with confidence {confidence}")
+    #         await update.message.reply_text(response)
+            
+    #     except Exception as e:
+    #         self.logger.error(f"Error handling message: {e}")
+    #         error_message = """
+    #         Xin lỗi, đã có lỗi xảy ra.
+    #         Vui lòng thử lại sau hoặc liên hệ support@decode.com
+    #         """
+    #         await update.message.reply_text(error_message)
+    
+    
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
         Handle incoming messages from both private chats and groups
@@ -79,13 +110,19 @@ class TelegramInterface:
                 
             response, confidence = self.bot.find_best_response(query)
             
-            self.logger.info(f"Generated response with confidence {confidence}")
-            await update.message.reply_text(response)
+            if response:
+                self.logger.info(f"Generated response with confidence {confidence}")
+                await update.message.reply_text(response)
+            else:
+                self.logger.warning("No response generated")
+                await update.message.reply_text("""
+                Xin lỗi, đã có lỗi xảy ra.
+                Vui lòng thử lại sau hoặc liên hệ support@decode.com
+                """)
             
         except Exception as e:
             self.logger.error(f"Error handling message: {e}")
-            error_message = """
+            await update.message.reply_text("""
             Xin lỗi, đã có lỗi xảy ra.
             Vui lòng thử lại sau hoặc liên hệ support@decode.com
-            """
-            await update.message.reply_text(error_message)
+            """)

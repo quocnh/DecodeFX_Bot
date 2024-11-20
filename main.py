@@ -24,7 +24,8 @@ def main():
     
     qa_pairs = bot.process_training_data(markdown_content)
     bot.train(qa_pairs)
-    
+ 
+
     # Initialize and start Telegram interface
     telegram_interface = TelegramInterface(bot, telegram_token)
     
