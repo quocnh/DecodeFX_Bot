@@ -14,6 +14,7 @@ A complete pipeline for DEcodeFX customer service chatbot.
 - Creates embeddings for all questions in the dataset
 - Uses cosine similarity to find the best matching response
 - Implements confidence threshold for fallback responses
+- Implements llama_model for for general text generation
 
 ## 3. Telegram Integration:
 
