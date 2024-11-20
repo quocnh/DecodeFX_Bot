@@ -40,8 +40,16 @@ class LanguageModelService:
             # Load tokenizer
             self.llama_tokenizer = AutoTokenizer.from_pretrained(
                 "meta-llama/Llama-2-7b-chat-hf",
-                use_auth_token=huggingface_token
+                use_auth_token=huggingface_token,
+                padding_side="left"  # Add this
             )
+            # Explicitly set padding token and add it to special tokens
+            if self.llama_tokenizer.pad_token is None:
+                self.llama_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+                self.logger.info("Added PAD token to tokenizer")
+            
+            # Verify tokenizer configuration
+            self.verify_tokenizer_config()
             
             # Load model with appropriate settings
             self.llama_model = AutoModelForCausalLM.from_pretrained(
@@ -61,19 +69,38 @@ class LanguageModelService:
             try:
                 self.logger.info("Attempting to load smaller model (OPT-350M)...")
                 self.llama_tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
-                # Set padding token for OPT model too
-                self.llama_tokenizer.pad_token = self.llama_tokenizer.eos_token
-
+                # Set padding token for OPT model
+                if self.llama_tokenizer.pad_token is None:
+                    self.llama_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+                
                 self.llama_model = AutoModelForCausalLM.from_pretrained(
                     "facebook/opt-350m",
                     torch_dtype=torch.float32,
                     low_cpu_mem_usage=True
                 )
+                # Update OPT model config with pad token
+                self.llama_model.config.pad_token_id = self.llama_tokenizer.pad_token_id
+                
                 self.logger.info("Loaded OPT-350M as fallback model")
+                self.verify_tokenizer_config()
             except Exception as fallback_e:
                 self.logger.error(f"Failed to load fallback model: {str(fallback_e)}")
                 self.llama_model = None
                 self.llama_tokenizer = None
+
+    def verify_tokenizer_config(self):
+        """Verify and log tokenizer configuration"""
+        try:
+            self.logger.info(f"Pad token: {self.llama_tokenizer.pad_token}")
+            self.logger.info(f"Pad token ID: {self.llama_tokenizer.pad_token_id}")
+            self.logger.info(f"EOS token: {self.llama_tokenizer.eos_token}")
+            self.logger.info(f"EOS token ID: {self.llama_tokenizer.eos_token_id}")
+            self.logger.info(f"BOS token: {self.llama_tokenizer.bos_token}")
+            self.logger.info(f"BOS token ID: {self.llama_tokenizer.bos_token_id}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Tokenizer configuration error: {str(e)}")
+            return False
 
     def get_training_response(self, query: str, qa_pairs: list, threshold: float = 0.7) -> Tuple[str, float]:
         """
@@ -102,6 +129,11 @@ class LanguageModelService:
                 Với câu hỏi về Decode FX, hãy cung cấp thông tin chính xác.
                 Với câu hỏi chung, hãy trả lời dựa trên kiến thức của bạn."""
 
+            # Ensure pad token is set
+            if self.llama_tokenizer.pad_token is None:
+                self.llama_tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+                self.logger.info("Added PAD token to tokenizer")
+
             # Improved chat format
             chat_format = f"""<s>[INST] <<SYS>>
             {system_prompt}
@@ -110,19 +142,24 @@ class LanguageModelService:
             Người dùng: {query} [/INST]
             Trợ lý:"""
 
+            # Configure tokenizer inputs with explicit padding
             inputs = self.llama_tokenizer(
                 chat_format,
                 return_tensors="pt",
                 padding=True,
                 truncation=True,
-                max_length=512
+                max_length=512,
+                pad_to_multiple_of=8,  # Add this for better efficiency
+                add_special_tokens=True  # Ensure special tokens are added
             )
+            
+            # Move inputs to model device
             inputs = {k: v.to(self.llama_model.device) for k, v in inputs.items()}
             
             with torch.no_grad():
                 outputs = self.llama_model.generate(
                     **inputs,
-                    max_new_tokens=512,  # Changed from max_length
+                    max_new_tokens=512,
                     temperature=0.7,
                     top_p=0.9,
                     num_beams=4,
@@ -130,11 +167,18 @@ class LanguageModelService:
                     no_repeat_ngram_size=3,
                     early_stopping=True,
                     pad_token_id=self.llama_tokenizer.pad_token_id,
-                    eos_token_id=self.llama_tokenizer.eos_token_id
+                    eos_token_id=self.llama_tokenizer.eos_token_id,
+                    bos_token_id=self.llama_tokenizer.bos_token_id,
                 )
             
-            response = self.llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
-            # Extract only the assistant's response
+            # Decode response
+            response = self.llama_tokenizer.decode(
+                outputs[0], 
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=True
+            )
+            
+            # Extract assistant's response
             response = response.split("Trợ lý:")[-1].strip()
             
             if not response:
@@ -145,10 +189,11 @@ class LanguageModelService:
             return response
         except Exception as e:
             self.logger.error(f"Llama 2 generation failed: {str(e)}")
+            self.logger.error("Tokenizer state:", self.llama_tokenizer.pad_token, self.llama_tokenizer.pad_token_id)
             return None
 
     def get_best_response(self, query: str, qa_pairs: list) -> Tuple[str, float]:
-        # Strategy 1:For Decode FX specific queries, try training data first
+        # Strategy 1: For Decode FX specific queries, try training data first
         self.logger.info("Attempting to find response in training data...")
         if any(keyword in query.lower() for keyword in ['decode', 'fx', 'trading', 'account']):
             response, confidence = self.get_training_response(query, qa_pairs)
@@ -176,32 +221,3 @@ class LanguageModelService:
         • Hoặc gọi hotline: 1900-xxx-xxx
         """    
         return default_response, 0.0
-
-    # def get_best_response(self, query: str, qa_pairs: list) -> Tuple[str, float]:
-    #     """
-    #     Try different strategies to get the best response
-    #     """
-    #     # Strategy 1: Try training data
-    #     self.logger.info("Attempting to find response in training data...")
-    #     response, confidence = self.get_training_response(query, qa_pairs)
-    #     if response and confidence >= 0.7:  # Added confidence threshold check
-    #         self.logger.info(f"Found matching response in training data with confidence {confidence}")
-    #         return response, confidence
-
-    #     # Strategy 2: Try Llama 2
-    #     self.logger.info("Attempting to generate response with Llama 2...")
-    #     response = self.get_llama_response(query)
-    #     if response:
-    #         self.logger.info("Successfully generated response with Llama 2")
-    #         return response, 0.5
-
-    #     # Strategy 3: Default response
-    #     self.logger.warning("No suitable response found, using default response")
-    #     default_response = """
-    #     Xin lỗi, tôi không thể trả lời câu hỏi này.
-    #     Vui lòng:
-    #     • Diễn đạt lại câu hỏi một cách rõ ràng hơn
-    #     • Liên hệ với bộ phận hỗ trợ khách hàng qua email support@decode.com
-    #     • Hoặc gọi hotline: 1900-xxx-xxx
-    #     """
-    #     return default_response, 0.0
