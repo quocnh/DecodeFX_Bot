@@ -15,7 +15,6 @@ A complete pipeline for DEcodeFX customer service chatbot.
 - Uses cosine similarity to find the best matching response
 - Implements confidence threshold for fallback responses
 
-
 ## 3. Telegram Integration:
 
 - Handles incoming messages and commands
