@@ -49,6 +49,8 @@ class LanguageModelService:
                 use_auth_token=huggingface_token,
                 **model_kwargs
             )
+            # Update model config with pad token
+            self.llama_model.config.pad_token_id = self.llama_tokenizer.pad_token_id
             
             self.logger.info("Llama 2 model loaded successfully")
             
@@ -59,6 +61,9 @@ class LanguageModelService:
             try:
                 self.logger.info("Attempting to load smaller model (OPT-350M)...")
                 self.llama_tokenizer = AutoTokenizer.from_pretrained("facebook/opt-350m")
+                # Set padding token for OPT model too
+                self.llama_tokenizer.pad_token = self.llama_tokenizer.eos_token
+
                 self.llama_model = AutoModelForCausalLM.from_pretrained(
                     "facebook/opt-350m",
                     torch_dtype=torch.float32,
@@ -105,7 +110,13 @@ class LanguageModelService:
             Người dùng: {query} [/INST]
             Trợ lý:"""
 
-            inputs = self.llama_tokenizer(chat_format, return_tensors="pt", padding=True)
+            inputs = self.llama_tokenizer(
+                chat_format,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512
+            )
             inputs = {k: v.to(self.llama_model.device) for k, v in inputs.items()}
             
             with torch.no_grad():
@@ -118,7 +129,8 @@ class LanguageModelService:
                     do_sample=True,
                     no_repeat_ngram_size=3,
                     early_stopping=True,
-                    pad_token_id=self.llama_tokenizer.pad_token_id
+                    pad_token_id=self.llama_tokenizer.pad_token_id,
+                    eos_token_id=self.llama_tokenizer.eos_token_id
                 )
             
             response = self.llama_tokenizer.decode(outputs[0], skip_special_tokens=True)
