@@ -10,3 +10,7 @@ python-dotenv==1.0.0
 accelerate==0.25.0
 bitsandbytes==0.41.3
 pandas
+huggingface-hub==0.19.4
+setuptools
+bitsandbytes>=0.41.1
+accelerate>=0.25.0

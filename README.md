@@ -14,7 +14,10 @@ A complete pipeline for DEcodeFX customer service chatbot.
 - Creates embeddings for all questions in the dataset
 - Uses cosine similarity to find the best matching response
 - Implements confidence threshold for fallback responses
-- Implements llama_model for for general text generation
+- Try different strategies to get the best response:
+    - Try phobert
+    - Implements llama_model for for general text generation
+    - Try default response
 
 ## 3. Telegram Integration:
 
@@ -29,16 +32,14 @@ mkdir decodefx-bot
 cd decodefx-bot
 
 ### 2. Create a virtual environment
+Note: rm -rf venv
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 or use Anaconda
 
 ### 3. Install requirements
-pip install telebot python-telegram-bot sentence-transformers scikit-learn pandas numpy
+pip install -r requirements.txt
 
-### 4. Add your bot token
-export TELEGRAM_BOT_TOKEN="your_token_here"
-
-# 5. Run the bot
-python customer_service_bot.py
+# 4. Run the bot
+python main.py
 ```
