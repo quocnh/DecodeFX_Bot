@@ -44,6 +44,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
+```mermaid
 flowchart TD
     subgraph External["External Services"]
         TG["Telegram API"]
@@ -87,3 +88,4 @@ flowchart TD
         S1 --> |no match| S2
         S2 --> |failed| S3
     end
+```
