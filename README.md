@@ -60,6 +60,7 @@ decode-fx-bot/
     └── .gitkeep
     
 ```
+# Cloud Deployment:
 
 ```mermaid
 graph TD
