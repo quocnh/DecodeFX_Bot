@@ -1,60 +1,104 @@
-from vector_store import VectorStore
-from llm_service import LLMService
-from config import Config
-import logging
 from typing import Tuple, Optional
+from sentence_transformers import SentenceTransformer
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+import logging
+import re
+from dataset_parser import DatasetParser
+from config import Config
 
 class BotService:
-    def __init__(self, vector_store: VectorStore, llm_service: LLMService):
-        self.vector_store = vector_store
-        self.llm_service = llm_service
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
-        self.default_response = """
-        Xin lỗi, tôi không thể trả lời câu hỏi này.
-        Vui lòng:
-        • Diễn đạt lại câu hỏi một cách rõ ràng hơn
-        • Liên hệ với bộ phận hỗ trợ khách hàng qua email support@decode.com
-        • Hoặc gọi hotline: 1900-xxx-xxx
-        """
+        self.confidence_threshold = Config.CONFIDENCE_THRESHOLD
+        self.model = SentenceTransformer('VoVanPhuc/sup-SimCSE-VietNamese-phobert-base')
+        
+        # Load dataset using the parser
+        self.dataset_parser = DatasetParser()
+        self.qa_pairs = self.dataset_parser.parse_markdown_file(Config.DATASET_PATH)
+        self.questions = [pair['KHÁCH_HÀNG'] for pair in self.qa_pairs]
+        self.question_embeddings = self._compute_embeddings(self.questions)
+        
+        # Define general patterns
+        self.general_patterns = Config.GENERAL_PATTERNS
+        self.default_response = Config.DEFAULT_RESPONSE
 
-    def get_response(self, query: str) -> Tuple[str, float]:
-        """Get response using vector store or LLM"""
+    def _compute_embeddings(self, texts: list) -> np.ndarray:
+        """Compute embeddings for a list of texts"""
         try:
-            # First try vector store
-            self.logger.info(f"Attempting to find response for query: {query}")
-            vector_response = self.vector_store.get_relevant_documents(
-                query, 
-                threshold=Config.SIMILARITY_THRESHOLD
+            return self.model.encode(texts, convert_to_tensor=True)
+        except Exception as e:
+            self.logger.error(f"Error computing embeddings: {str(e)}")
+            return np.array([])
+
+    def _check_general_patterns(self, query: str) -> Optional[str]:
+        """Check if query matches any general patterns"""
+        query = query.lower().strip()
+        
+        for pattern_group in self.general_patterns:
+            for pattern in pattern_group['patterns']:
+                if re.search(pattern, query):
+                    return pattern_group['response']
+        return None
+
+    def get_response(self, query: str, user_id: str, username: str) -> Tuple[str, float]:
+        """Get response for user query"""
+        try:
+            # Log incoming query
+            self.logger.info(f"Processing query from {username} ({user_id}): {query}")
+            
+            # First check general patterns
+            general_response = self._check_general_patterns(query)
+            if general_response:
+                self.logger.info(f"Found general pattern match for query: {query}")
+                return general_response, 1.0
+            
+            # If no general pattern matches, try specific QA matching
+            query_embedding = self.model.encode([query], convert_to_tensor=True)
+            similarities = cosine_similarity(
+                query_embedding.numpy(),
+                self.question_embeddings.numpy()
+            )[0]
+            
+            best_match_idx = np.argmax(similarities)
+            confidence = similarities[best_match_idx]
+            
+            if confidence >= self.confidence_threshold:
+                response = self.qa_pairs[best_match_idx]['TRẢ_LỜI']
+                priority = self.qa_pairs[best_match_idx]['ĐỘ_ƯU_TIÊN']
+                
+                self.logger.info(
+                    f"Found match: Confidence={confidence:.2f}, Priority={priority}"
+                )
+                
+                # Add contact info for moderate confidence
+                if confidence < 0.85:
+                    response += Config.MODERATE_CONFIDENCE_SUFFIX
+                    
+                return response, confidence
+            
+            self.logger.info(
+                f"No good match found. Best confidence: {confidence:.2f}"
             )
-            
-            if vector_response:
-                self.logger.info("Found response in vector store")
-                return vector_response, 0.9
-            
-            # If no match in vector store, try LLM
-            self.logger.info("No match in vector store, trying LLM")
-            llm_response = self.llm_service.generate_response(query)
-            
-            if llm_response:
-                self.logger.info("Generated response using LLM")
-                return llm_response, 0.5
-            
-            # If both fail, return default response
-            self.logger.warning("No response generated, using default")
-            return self.default_response, 0.0
-            
+            return self.default_response, confidence
+
         except Exception as e:
             self.logger.error(f"Error getting response: {str(e)}")
             return self.default_response, 0.0
 
     def prepare_response(self, response: str) -> str:
-        """Format and clean response"""
+        """Clean and format the response"""
         try:
             response = response.strip()
-            # Add formatting if needed
-            if not any(response.startswith(prefix) for prefix in ["Dạ ", "Vâng ", "Xin "]):
-                response = "Dạ " + response[0].lower() + response[1:]
+            response = response.replace('  ', ' ')
+            
+            # Add emoji based on content
+            if "xin lỗi" in response.lower():
+                response = "😅 " + response
+            elif "cảm ơn" in response.lower():
+                response = "😊 " + response
+            
             return response
         except Exception as e:
             self.logger.error(f"Error preparing response: {str(e)}")
-            return response
+            return self.default_response
