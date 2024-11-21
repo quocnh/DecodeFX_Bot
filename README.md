@@ -62,98 +62,60 @@ decode-fx-bot/
 ```
 
 ```mermaid
-flowchart TD
-    subgraph User["User Interface"]
-        TG["Telegram\nClient"]
+graph TD
+    subgraph External ["External Systems"]
+        TG[Telegram API]
     end
 
-    subgraph Dataset["Training Dataset"]
-        MD["Markdown Dataset\ndecode-fx-vietnamese-dataset.md"]
-        subgraph DataStructure["Data Structure"]
-            QS["KHÁCH_HÀNG:\nQuestions"]
-            AN["TRẢ_LỜI:\nAnswers"]
-            TG1["NHÃN:\nTags"]
-            PR["ĐỘ_ƯU_TIÊN:\nPriority"]
-        end
-        MD --> |contains| DataStructure
+    subgraph Main ["Main Application"]
+        M[main.py]
+        M -->|initializes| LS[LoggerSetup]
+        M -->|creates| BS[BotService]
+        M -->|creates| TI[TelegramInterface]
     end
 
-    subgraph Core["Core Components"]
-        TI["TelegramInterface\n(telegram_interface.py)"]
-        BS["BotService\n(bot_service.py)"]
-        
-        subgraph DataProcessing["Data Processing"]
-            DP["DataProcessor\n(data_processor.py)"]
-            QA["QA Pairs"]
-            DC["Document Chunks"]
-            DP --> |extract| QA
-            QA --> |split| DC
-        end
-        
-        subgraph VectorDB["Vector Store"]
-            VS["VectorStore\n(vector_store.py)"]
-            CH["ChromaDB"]
-            EM["Embeddings\n(PhoBERT)"]
-            VS --> |store| CH
-            VS --> |embed| EM
-        end
-        
-        subgraph LLM["Language Model"]
-            LS["LLMService\n(llm_service.py)"]
-            L2["Llama Model"]
-            TK["Tokenizer"]
-            LS --> |use| L2
-            LS --> |use| TK
-        end
-        
-        subgraph Config["Configuration"]
-            CF["config.py"]
-            ENV[".env file"]
-            CF --> |load| ENV
-        end
+    subgraph Core ["Core Services"]
+        BS -->|uses| DP[DatasetParser]
+        BS -->|uses| ST[Sentence Transformer]
+        BS -->|reads| CF[Config]
+        TI -->|uses| BS
+        TI -->|reads| CF
     end
 
-    %% Dataset to Processing Flow
-    MD --> |input| DP
-    DataStructure --> |structure| QA
-
-    %% Data Flow
-    TG <--> |messages| TI
-    TI --> |query| BS
-    BS --> |search| VS
-    BS --> |generate| LS
-    DC --> |index| VS
-
-    %% Return Flow
-    VS --> |results| BS
-    LS --> |response| BS
-    BS --> |response| TI
-    
-    %% Styles
-    style User fill:#e6f3ff,stroke:#333
-    style Core fill:#f5f5f5,stroke:#333
-    style Dataset fill:#ffe6cc,stroke:#333
-    style DataProcessing fill:#fff2e6,stroke:#333
-    style VectorDB fill:#e6ffe6,stroke:#333
-    style LLM fill:#ffe6e6,stroke:#333
-    style Config fill:#e6e6ff,stroke:#333
-    style DataStructure fill:#fff5e6,stroke:#333
-
-    %% Component Relationships
-    CF -.-> |configure| TI
-    CF -.-> |configure| VS
-    CF -.-> |configure| LS
-
-    %% Dataset Organization Notes
-    subgraph DatasetNotes["Dataset Organization"]
-        direction TB
-        N1["1. Account Management"]
-        N2["2. Trading"]
-        N3["3. Deposits/Withdrawals"]
-        N4["4. Promotions"]
-        N5["5. Copy Trading"]
-        N6["...Other Categories"]
+    subgraph Data ["Data Layer"]
+        DP -->|reads| DS[dataset.md]
+        CF -->|loads| ENV[.env]
     end
-    
-    MD -.-> |organized into| DatasetNotes
+
+    subgraph Logging ["Logging System"]
+        LS -->|writes| LOG[bot.log]
+        BS -->|logs| LOG
+        TI -->|logs| LOG
+    end
+
+    TI <-->|interacts| TG
+
+    subgraph Flow ["Message Flow"]
+        direction LR
+        U[User] -->|sends message| TG
+        TG -->|webhook| TI
+        TI -->|processes| BS
+        BS -->|generates| R[Response]
+        R -->|via| TI
+        TI -->|sends| U
+    end
+
+classDef external fill:#f9f,stroke:#333,stroke-width:4px
+classDef main fill:#bbf,stroke:#333,stroke-width:2px
+classDef core fill:#bfb,stroke:#333,stroke-width:2px
+classDef data fill:#fbb,stroke:#333,stroke-width:2px
+classDef logging fill:#fff,stroke:#333,stroke-width:2px
+classDef flow fill:#ffe,stroke:#333,stroke-width:2px
+
+class TG external
+class M,TI main
+class BS,DP,ST,CF core
+class DS,ENV data
+class LS,LOG logging
+class U,R flow
 ```
