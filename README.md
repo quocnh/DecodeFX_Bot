@@ -62,6 +62,7 @@ decode-fx-bot/
 ```
 # Cloud Deployment:
 
+# System Diagram:
 ```mermaid
 graph TD
     subgraph External ["External Systems"]
@@ -120,6 +121,7 @@ class DS,ENV data
 class LS,LOG logging
 class U,R flow
 ```
+# Sequence Diagram:
 ```mermaid
 sequenceDiagram
     participant U as User
