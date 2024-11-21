@@ -43,23 +43,19 @@ pip install -r requirements.txt
 # 4. Run the bot
 python main.py
 
-decode_fx_bot/
-├── .env
+decode-fx-bot/
+├── main.py
+├── config.py
+├── bot_service.py
+├── telegram_interface.py
+├── dataset_parser.py
+├── logger_config.py
 ├── requirements.txt
-├── dataset/
-│   └── decode-fx-vietnamese-dataset.md
-├── src/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── dataset_handler.py
-│   ├── data_processor.py
-│   ├── vector_store.py
-│   ├── llm_service.py
-│   ├── bot_service.py
-│   ├── telegram_interface.py
-│   └── main.py
+├── .env
+├── data/
+│   └── dataset.md
 └── logs/
-    └── bot.log
+    └── .gitkeep
     
 ```
 
