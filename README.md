@@ -119,3 +119,41 @@ class DS,ENV data
 class LS,LOG logging
 class U,R flow
 ```
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant TI as TelegramInterface
+    participant BS as BotService
+    participant DP as DatasetParser
+    participant ST as SentenceTransformer
+    participant L as Logger
+
+    U->>+TI: Send Message
+    TI->>L: Log incoming message
+    
+    alt Private Chat
+        TI->>BS: Process direct message
+    else Group Chat
+        TI->>TI: Check bot mention/reply
+        TI->>BS: Process if bot mentioned
+    end
+    
+    BS->>ST: Generate embeddings
+    BS->>BS: Check general patterns
+    
+    alt Pattern Match Found
+        BS-->>TI: Return general response
+    else No Pattern Match
+        BS->>ST: Compare with dataset
+        ST-->>BS: Return similarities
+        BS->>BS: Check confidence threshold
+        alt High Confidence
+            BS-->>TI: Return dataset response
+        else Low Confidence
+            BS-->>TI: Return default response
+        end
+    end
+    
+    TI->>L: Log response
+    TI-->>-U: Send Response
+```
