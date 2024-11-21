@@ -32,7 +32,9 @@ mkdir decodefx-bot
 cd decodefx-bot
 
 ### 2. Create a virtual environment
-Note: rm -rf venv
+Note:
+deactivate
+rm -rf venv
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 or use Anaconda
