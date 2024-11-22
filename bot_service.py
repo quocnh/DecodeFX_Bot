@@ -1,5 +1,7 @@
+# bot_service.py
 from typing import Tuple, Optional
-from sentence_transformers import SentenceTransformer
+import torch
+from transformers import AutoTokenizer, AutoModel
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 import logging
@@ -11,7 +13,10 @@ class BotService:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self.confidence_threshold = Config.CONFIDENCE_THRESHOLD
-        self.model = SentenceTransformer('VoVanPhuc/sup-SimCSE-VietNamese-phobert-base')
+        
+        # Load PhoBERT model and tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
+        self.model = AutoModel.from_pretrained("vinai/phobert-base")
         
         # Load dataset using the parser
         self.dataset_parser = DatasetParser()
@@ -26,7 +31,31 @@ class BotService:
     def _compute_embeddings(self, texts: list) -> np.ndarray:
         """Compute embeddings for a list of texts"""
         try:
-            return self.model.encode(texts, convert_to_tensor=True)
+            embeddings = []
+            
+            # Set model to evaluation mode
+            self.model.eval()
+            
+            with torch.no_grad():
+                for text in texts:
+                    # Tokenize text
+                    encoded = self.tokenizer(
+                        text,
+                        padding=True,
+                        truncation=True,
+                        max_length=128,
+                        return_tensors='pt'
+                    )
+                    
+                    # Get model output
+                    output = self.model(**encoded)
+                    
+                    # Use the [CLS] token embedding as the sentence embedding
+                    sentence_embedding = output.last_hidden_state[:, 0, :].numpy()
+                    embeddings.append(sentence_embedding[0])
+            
+            return np.array(embeddings)
+            
         except Exception as e:
             self.logger.error(f"Error computing embeddings: {str(e)}")
             return np.array([])
@@ -54,11 +83,8 @@ class BotService:
                 return general_response, 1.0
             
             # If no general pattern matches, try specific QA matching
-            query_embedding = self.model.encode([query], convert_to_tensor=True)
-            similarities = cosine_similarity(
-                query_embedding.numpy(),
-                self.question_embeddings.numpy()
-            )[0]
+            query_embedding = self._compute_embeddings([query])
+            similarities = cosine_similarity(query_embedding, self.question_embeddings)[0]
             
             best_match_idx = np.argmax(similarities)
             confidence = similarities[best_match_idx]
