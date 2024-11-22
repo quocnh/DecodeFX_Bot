@@ -23,7 +23,7 @@ async def main():
         telegram_interface = TelegramInterface(bot_service)
         
         # Run the bot
-        await telegram_interface.run_polling()
+        await telegram_interface.run_polling()  
         
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt")

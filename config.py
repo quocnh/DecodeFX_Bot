@@ -9,7 +9,7 @@ class Config:
     CONFIDENCE_THRESHOLD = 0.75
     
     # Paths
-    DATASET_PATH = "data/dataset.md"
+    DATASET_PATH = "data/decode-fx-vietnamese-dataset.md"
     LOG_FILE = "logs/bot.log"
     
     # Default Response

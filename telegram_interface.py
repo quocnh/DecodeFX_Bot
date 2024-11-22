@@ -139,5 +139,5 @@ class TelegramInterface:
         self.logger.info("Bot is starting...")
         await self.application.initialize()
         await self.application.start()
-        self.logger.info("Bot is running...")
-        await self.application.run_polling(allowed_updates=Update.ALL_TYPES)
+        # self.logger.info("Bot is running...")
+        # await self.application.run_polling(allowed_updates=Update.ALL_TYPES)
