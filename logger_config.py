@@ -1,3 +1,4 @@
+# logger_config.py
 import logging
 import colorlog
 import os
@@ -12,7 +13,7 @@ class LoggerSetup:
 
         # Create formatters
         file_formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(user_id)s - %(message)s'
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'  # Removed user_id
         )
         
         console_formatter = colorlog.ColoredFormatter(
@@ -44,4 +45,11 @@ class LoggerSetup:
         root_logger.addHandler(file_handler)
         root_logger.addHandler(console_handler)
         
-        return root_logger 
+        return root_logger
+
+# Create a custom logger adapter for user context
+class UserContextAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        if 'user_id' in self.extra:
+            return f'[User: {self.extra["user_id"]}] {msg}', kwargs
+        return msg, kwargs
