@@ -27,136 +27,116 @@ A complete pipeline for DEcodeFX customer service chatbot.
 
 # Local Deployment (For Testing):
 ```python
-### 1. Create a directory for your bot
-mkdir decodefx-bot
-cd decodefx-bot
-
-### 2. Create a virtual environment
-Note:
+# Deactivate current environment
 deactivate
-rm -rf venv
-python3.11 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-or use Anaconda
 
-### 3. Install requirements
+# Remove the old virtual environment
+rm -rf venv
+
+# Create new virtual environment
+python3.11 -m venv venv
+
+# Activate the new environment
+source venv/bin/activate
+
+# Upgrade pip
+pip install --upgrade pip
+
+# Install requirements
 pip install -r requirements.txt
 
-# 4. Run the bot
-python main.py
-
-decode-fx-bot/
-├── main.py
-├── config.py
-├── bot_service.py
-├── telegram_interface.py
-├── dataset_parser.py
-├── logger_config.py
-├── requirements.txt
-├── .env
-├── data/
-│   └── dataset.md
-└── logs/
-    └── .gitkeep
+DecodeFX_Bot/
+├── .env                    # Environment variables
+├── requirements.txt        # Dependencies
+├── data/                   # Data directory
+│   └── decode-fx-vietnamese-dataset.md
+├── logs/                   # Log files directory
+├── models/                 # Models directory
+│   ├── __init__.py        # Make models a package
+│   └── bot_llm.py
+├── interfaces/            # Interfaces directory
+│   ├── __init__.py       # Make interfaces a package
+│   └── telegram_interface.py
+├── config.py             # Configuration file
+└── main.py              # Main application file
     
 ```
 # Cloud Deployment:
 
 # System Diagram:
 ```mermaid
-graph TD
-    subgraph External ["External Systems"]
-        TG[Telegram API]
+graph TB
+    User[User/Customer] --> TG[Telegram Client]
+    
+    subgraph "DecodeFX Bot System"
+        TG --> TI[Telegram Interface]
+        TI --> Logger[Logging System]
+        TI --> BLLM[BotLLMModel]
+        
+        subgraph "BotLLMModel Components"
+            BLLM --> ST[Sentence Transformer]
+            BLLM --> DS[Dataset Handler]
+            ST --> SM[Similarity Matcher]
+        end
+        
+        DS --> MD[(Vietnamese Q&A Dataset)]
+        Logger --> LF[(Log Files)]
     end
-
-    subgraph Main ["Main Application"]
-        M[main.py]
-        M -->|initializes| LS[LoggerSetup]
-        M -->|creates| BS[BotService]
-        M -->|creates| TI[TelegramInterface]
-    end
-
-    subgraph Core ["Core Services"]
-        BS -->|uses| DP[DatasetParser]
-        BS -->|uses| ST[Sentence Transformer]
-        BS -->|reads| CF[Config]
-        TI -->|uses| BS
-        TI -->|reads| CF
-    end
-
-    subgraph Data ["Data Layer"]
-        DP -->|reads| DS[dataset.md]
-        CF -->|loads| ENV[.env]
-    end
-
-    subgraph Logging ["Logging System"]
-        LS -->|writes| LOG[bot.log]
-        BS -->|logs| LOG
-        TI -->|logs| LOG
-    end
-
-    TI <-->|interacts| TG
-
-    subgraph Flow ["Message Flow"]
-        direction LR
-        U[User] -->|sends message| TG
-        TG -->|webhook| TI
-        TI -->|processes| BS
-        BS -->|generates| R[Response]
-        R -->|via| TI
-        TI -->|sends| U
-    end
-
-classDef external fill:#f9f,stroke:#333,stroke-width:4px
-classDef main fill:#bbf,stroke:#333,stroke-width:2px
-classDef core fill:#bfb,stroke:#333,stroke-width:2px
-classDef data fill:#fbb,stroke:#333,stroke-width:2px
-classDef logging fill:#fff,stroke:#333,stroke-width:2px
-classDef flow fill:#ffe,stroke:#333,stroke-width:2px
-
-class TG external
-class M,TI main
-class BS,DP,ST,CF core
-class DS,ENV data
-class LS,LOG logging
-class U,R flow
+    
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:2px
+    classDef storage fill:#dfd,stroke:#333,stroke-width:2px
+    
+    class TI,BLLM primary
+    class ST,DS,SM,Logger secondary
+    class MD,LF storage
 ```
 # Sequence Diagram:
 ```mermaid
 sequenceDiagram
     participant U as User
+    participant T as Telegram
     participant TI as TelegramInterface
-    participant BS as BotService
-    participant DP as DatasetParser
-    participant ST as SentenceTransformer
     participant L as Logger
+    participant B as BotLLMModel
+    participant ST as SentenceTransformer
+    participant D as Dataset
 
-    U->>+TI: Send Message
-    TI->>L: Log incoming message
+    %% Initialization
+    Note over TI,D: System Initialization
+    TI->>B: Initialize
+    B->>ST: Load Model
+    B->>D: Load Dataset
+    B->>ST: Generate Embeddings
+
+    %% Message Flow
+    U->>T: Send Message
+    T->>TI: Forward Message
+    TI->>L: Log Incoming Message
     
     alt Private Chat
-        TI->>BS: Process direct message
+        TI->>TI: Process Directly
     else Group Chat
-        TI->>TI: Check bot mention/reply
-        TI->>BS: Process if bot mentioned
+        TI->>TI: Check if Bot Mentioned
     end
-    
-    BS->>ST: Generate embeddings
-    BS->>BS: Check general patterns
-    
-    alt Pattern Match Found
-        BS-->>TI: Return general response
-    else No Pattern Match
-        BS->>ST: Compare with dataset
-        ST-->>BS: Return similarities
-        BS->>BS: Check confidence threshold
-        alt High Confidence
-            BS-->>TI: Return dataset response
-        else Low Confidence
-            BS-->>TI: Return default response
+
+    alt General/Short Query
+        TI->>B: find_best_answer(query)
+        B->>B: _is_general_query(query)
+        B->>B: _get_sample_questions()
+        B-->>TI: Return Sample Questions
+    else Specific Query
+        TI->>B: find_best_answer(query)
+        B->>ST: Generate Query Embedding
+        B->>B: Calculate Similarity
+        alt Good Match Found
+            B-->>TI: Return Best Answer
+        else No Good Match
+            B-->>TI: Return Default Response
         end
     end
     
-    TI->>L: Log response
-    TI-->>-U: Send Response
+    TI->>L: Log Response
+    TI->>T: Send Response
+    T->>U: Display Response
 ```
