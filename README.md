@@ -35,7 +35,7 @@ cd decodefx-bot
 Note:
 deactivate
 rm -rf venv
-python -m venv venv
+python3.11 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 or use Anaconda
 

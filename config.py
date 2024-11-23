@@ -1,43 +1,36 @@
-import os
 from dotenv import load_dotenv
+import os
+import logging
+from datetime import datetime
+import sys
 
 load_dotenv()
 
-class Config:
-    # Bot Configuration
-    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-    CONFIDENCE_THRESHOLD = 0.75
+# Configure logging
+def setup_logger():
+    # Create logs directory if it doesn't exist
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
     
-    # Paths
-    DATASET_PATH = "data/decode-fx-vietnamese-dataset.md"
-    LOG_FILE = "logs/bot.log"
+    # Create a new log file for each day
+    log_filename = f"logs/bot_{datetime.now().strftime('%Y-%m-%d')}.log"
     
-    # Default Response
-    DEFAULT_RESPONSE = """
-    Xin lỗi, tôi chưa hiểu rõ câu hỏi của bạn.
-    Vui lòng thử:
-    1. Đặt lại câu hỏi rõ ràng hơn
-    2. Liên hệ hotline: XXXX
-    3. Email: support@decodefx.com
-    """
-    
-    MODERATE_CONFIDENCE_SUFFIX = "\n\nNếu cần thêm thông tin, vui lòng liên hệ hotline: XXXX"
-    
-    # General chat patterns
-    GENERAL_PATTERNS = [
-        {
-            'patterns': [r'(chào|hello|hi|hey)', r'(có ai|ai đó)'],
-            'response': """
-            Chào bạn! Mình là bot hỗ trợ của Decode FX. 
-            Mình có thể giúp bạn về:
-            • Mở tài khoản và KYC
-            • Nạp/rút tiền
-            • Vấn đề giao dịch
-            • Hỗ trợ kỹ thuật
-            """
-        },
-        {
-            'patterns': [r'(cảm ơn|thank|tks|thanks)'],
-            'response': "Cảm ơn bạn đã liên hệ Decode FX! 😊"
-        }
-    ]
+    # Configure logging format
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_filename, encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    return logging.getLogger('DecodeFXBot')
+
+logger = setup_logger()
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CUSTOMER_SERVICE_CONTACT = "0123456789"
+DEFAULT_RESPONSE = (
+    f"Xin lỗi, tôi không thể trả lời câu hỏi này. "
+    f"Vui lòng liên hệ với bộ phận CSKH của chúng tôi tại: {CUSTOMER_SERVICE_CONTACT}"
+)
