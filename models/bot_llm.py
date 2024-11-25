@@ -22,18 +22,51 @@ class BotLLMModel:
         try:
             lines = block.strip().split('\n')
             question = None
-            answer = None
+            answer_lines = []
+            collecting_answer = False
             
             for line in lines:
                 line = line.strip()
+                
                 if line.startswith('KHÁCH_HÀNG:'):
                     # Extract question text between quotes
-                    question = line.split('"')[1] if '"' in line else line.split('KHÁCH_HÀNG:')[1].strip()
+                    start = line.find('"')
+                    end = line.rfind('"')
+                    if start != -1 and end != -1:
+                        question = line[start + 1:end]
+                
                 elif line.startswith('TRẢ_LỜI:'):
-                    # Extract answer text between quotes
-                    answer = line.split('"')[1] if '"' in line else line.split('TRẢ_LỜI:')[1].strip()
+                    # Start collecting answer lines
+                    collecting_answer = True
+                    # Get first line of answer if it's on the same line
+                    start = line.find('"')
+                    if start != -1:
+                        first_answer_line = line[start + 1:]
+                        if first_answer_line:
+                            answer_lines.append(first_answer_line)
+                
+                elif collecting_answer and not line.startswith('NHÃN:'):
+                    # Continue collecting answer lines until we hit NHÃN
+                    # Remove quotes if present
+                    line = line.strip('"')
+                    if line:
+                        answer_lines.append(line)
+                
+                elif line.startswith('NHÃN:'):
+                    collecting_answer = False
+            
+            # Join answer lines with proper line breaks
+            answer = '\n'.join(answer_lines) if answer_lines else None
+            
+            # Clean up any remaining quotes
+            if answer:
+                answer = answer.strip('"')
+            
+            logger.debug(f"Extracted Q: {question}")
+            logger.debug(f"Extracted A: {answer}")
             
             return question, answer
+            
         except Exception as e:
             logger.error(f"Error parsing QA block: {str(e)}")
             return None, None
@@ -49,18 +82,15 @@ class BotLLMModel:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
                 
-            # Split content into QA blocks
-            qa_blocks = content.split('\n\n')  # Assuming blocks are separated by double newlines
+            # Split content into QA blocks (separated by double newlines)
+            qa_blocks = [block for block in content.split('\n\n') if block.strip()]
             
             for block in qa_blocks:
-                if not block.strip():
-                    continue
-                    
                 question, answer = self._extract_qa_from_block(block)
                 if question and answer:
                     questions.append(question)
                     answers.append(answer)
-                    logger.debug(f"Loaded Q: {question[:50]}...")
+                    logger.debug(f"Loaded QA pair - Q: {question[:50]}...")
                     
             logger.info(f"Successfully parsed {len(questions)} QA pairs from markdown file")
             return questions, answers
