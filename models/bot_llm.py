@@ -4,6 +4,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import random
 from config import logger
+import re
 
 class BotLLMModel:
     def __init__(self, dataset_path):
@@ -115,9 +116,44 @@ class BotLLMModel:
             samples = suitable_questions
         return samples
 
-    def find_best_answer(self, query, threshold=0.7):
+    def _refine_query(self, query: str) -> str:
+
+        # Step 1: Normalize whitespace
+        query = re.sub(r"\s+", " ", query.strip())
+        
+        # Step 2: Remove unnecessary punctuation (except for essential ones)
+        query = re.sub(r"[^\w\s.,?!]", "", query)
+        
+        # Step 3: Convert to lowercase for consistency
+        query = query.lower()
+        
+        # Step 4: Identify specific intents (optional, customize for your use case)
+        # Add any domain-specific transformations if needed
+
+        # Example transformation: simplify verbose phrases
+        transformations = {
+            "can you please": "please",
+            "i would like to know": "tell me",
+            "could you": "please",
+            "i am wondering": "tell me",
+        }
+        for phrase, replacement in transformations.items():
+            query = query.replace(phrase, replacement)
+        
+        # Step 5: Tokenize and reassemble for further custom processing if needed
+        tokens = query.split()
+        
+        # Optionally filter stopwords or short words
+        stopwords = {"the", "a", "an", "is", "am", "are", "was", "were", "and", "or"}
+        tokens = [token for token in tokens if token not in stopwords]
+        
+        # Reassemble refined query
+        refined_query = " ".join(tokens)
+        return refined_query
+
+    def find_best_answer(self, raw_query, threshold=0.7):
         try:
-            query = query.strip()
+            query = self._refine_query(raw_query)
             logger.info(f"Processing query: {query}")
 
             # Check if query is too general
