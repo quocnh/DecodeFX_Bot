@@ -227,7 +227,7 @@ class BotLLMModel:
         logger.debug(f"Refined query: {refined_query}")
         return refined_query
 
-    def find_best_answer(self, raw_query, threshold=0.6):
+    def find_best_answer(self, raw_query, threshold=0.7):
         """Find the best matching answer for a given query."""
         try:
             query = self._refine_query(raw_query)
