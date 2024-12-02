@@ -1,8 +1,8 @@
-# models/bot_llm.py
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import random
+import re
 from config import logger
 
 class BotLLMModel:
@@ -10,9 +10,13 @@ class BotLLMModel:
         logger.info("Initializing BotLLMModel")
         try:
             self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-            self.questions, self.answers = self._load_md_dataset(dataset_path)
-            self.question_embeddings = self.model.encode(self.questions)
-            logger.info(f"Successfully loaded dataset with {len(self.questions)} QA pairs")
+            # Load original questions and answers
+            self.original_questions, self.answers = self._load_md_dataset(dataset_path)
+            # Create normalized questions for embedding
+            self.normalized_questions = [self._refine_query(q) for q in self.original_questions]
+            # Generate embeddings using normalized questions
+            self.question_embeddings = self.model.encode(self.normalized_questions)
+            logger.info(f"Successfully loaded dataset with {len(self.original_questions)} QA pairs")
         except Exception as e:
             logger.error(f"Error initializing BotLLMModel: {str(e)}")
             raise
@@ -72,9 +76,7 @@ class BotLLMModel:
             return None, None
 
     def _load_md_dataset(self, file_path):
-        """
-        Load Q&A pairs from markdown file.
-        """
+        """Load Q&A pairs from markdown file."""
         questions = []
         answers = []
         
@@ -88,6 +90,7 @@ class BotLLMModel:
             for block in qa_blocks:
                 question, answer = self._extract_qa_from_block(block)
                 if question and answer:
+                    # Store original questions and answers
                     questions.append(question)
                     answers.append(answer)
                     logger.debug(f"Loaded QA pair - Q: {question[:50]}...")
@@ -108,16 +111,62 @@ class BotLLMModel:
 
     def _get_sample_questions(self, n=5):
         """Return n random sample questions from the dataset"""
-        suitable_questions = [q for q in self.questions if 10 <= len(q) <= 100]
+        suitable_questions = [q for q in self.original_questions if 10 <= len(q) <= 100]
         if len(suitable_questions) > n:
             samples = random.sample(suitable_questions, n)
         else:
             samples = suitable_questions
         return samples
 
-    def find_best_answer(self, query, threshold=0.6):
+    def _refine_query(self, query: str) -> str:
+        """Refine and normalize the query for better matching."""
+        # Step 1: Normalize whitespace
+        query = re.sub(r"\s+", " ", query.strip())
+        
+        # Step 2: Remove unnecessary punctuation (except for essential ones)
+        query = re.sub(r"[^\w\s.,?!]", "", query)
+        
+        # Step 3: Convert to lowercase for consistency
+        query = query.lower()
+        
+        # Step 4: Replace common variations of keywords with standard forms
+        keyword_mapping = {
+            'kyc': 'KYC',
+            'mt4': 'MT4',
+            'usdt': 'USDT',
+            'btc': 'BTC',
+            'ecn': 'ECN',
+        }
+        
+        for key, value in keyword_mapping.items():
+            # Use word boundaries to avoid partial replacements
+            query = re.sub(rf'\b{key}\b', value, query, flags=re.IGNORECASE)
+        
+        # Step 5: Handle common verbose phrases
+        transformations = {
+            "can you please": "please",
+            "i would like to know": "tell me",
+            "could you": "please",
+            "i am wondering": "tell me",
+        }
+        for phrase, replacement in transformations.items():
+            query = query.replace(phrase, replacement)
+        
+        # Step 6: Remove stopwords
+        stopwords = {"the", "a", "an", "is", "am", "are", "was", "were", "and", "or"}
+        tokens = query.split()
+        tokens = [token for token in tokens if token.lower() not in stopwords]
+        
+        # Reassemble refined query
+        refined_query = " ".join(tokens)
+        
+        logger.debug(f"Refined query: {refined_query}")
+        return refined_query
+
+    def find_best_answer(self, raw_query, threshold=0.7):
+        """Find the best matching answer for a given query."""
         try:
-            query = query.strip()
+            query = self._refine_query(raw_query)
             logger.info(f"Processing query: {query}")
 
             # Check if query is too general
@@ -136,7 +185,7 @@ class BotLLMModel:
             best_similarity = similarities[best_match_idx]
             
             logger.debug(f"Best match similarity: {best_similarity}")
-            logger.debug(f"Best matching question: {self.questions[best_match_idx]}")
+            logger.debug(f"Best matching question: {self.original_questions[best_match_idx]}")
             
             if best_similarity >= threshold:
                 answer = self.answers[best_match_idx]
