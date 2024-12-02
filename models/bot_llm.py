@@ -227,11 +227,29 @@ class BotLLMModel:
         logger.debug(f"Refined query: {refined_query}")
         return refined_query
 
-    def find_best_answer(self, raw_query, threshold=0.7):
+    def find_best_answer(self, raw_query, high_threshold=0.7, low_threshold=0.4):
         """Find the best matching answer for a given query."""
         try:
             query = self._refine_query(raw_query)
             logger.info(f"Processing query: {query}")
+
+            # Expanded list of Vietnamese confirmations
+            confirmations = {
+                'yes', 'đúng', 'đúng rồi', 'yes đúng', 'phải', 'đúng vậy', 'y', 'ok',
+                'ừ', 'ừm', 'uhm', 'um', 'uh', 'uk', 'đúng rùi', 'đúng òi', 'ừa',
+                'đúng ạ', 'vâng', 'vâng ạ', 'dạ', 'dạ đúng', 'dạ phải', 'đúng đó',
+                'phải rồi', 'chính xác', 'đúng thế', 'chính xác'
+            }
+
+            # Check if it's a confirmation response
+            if query.lower().strip() in confirmations:
+                # Return the saved answer if there is one
+                if hasattr(self, '_last_suggested_answer'):
+                    answer = self._last_suggested_answer
+                    delattr(self, '_last_suggested_answer')  # Clear the saved answer
+                    return answer
+                else:
+                    return "Xin lỗi, vui lòng hỏi lại câu hỏi."
 
             # Check if query is too general
             if self._is_general_query(query):
@@ -263,14 +281,23 @@ class BotLLMModel:
             logger.debug(f"Best match similarity: {best_similarity}")
             logger.debug(f"Best matching question: {self.original_questions[best_match_idx]}")
             
-            if best_similarity >= threshold:
+            if best_similarity >= high_threshold:
+                # High confidence - return direct answer
                 answer = self.answers[best_match_idx]
                 logger.info(f"Found matching answer with similarity {best_similarity:.2f}")
                 return answer
+            elif best_similarity >= low_threshold:
+                # Medium confidence - ask for confirmation
+                # Save the answer for later use
+                self._last_suggested_answer = self.answers[best_match_idx]
+                response = f"Có phải bạn muốn hỏi: '{self.original_questions[best_match_idx]}'?"
+                logger.info(f"Suggesting similar question with similarity {best_similarity:.2f}")
+                return response
             else:
+                # Low confidence - return default response
                 logger.info(f"No good match found. Best similarity: {best_similarity:.2f}")
-                return None
+                return "Xin lỗi, tôi không hiểu rõ câu hỏi của bạn. Vui lòng diễn đạt lại câu hỏi hoặc liên hệ bộ phận CSKH để được hỗ trợ."
                 
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
-            return None
+            return "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau hoặc liên hệ bộ phận CSKH."
