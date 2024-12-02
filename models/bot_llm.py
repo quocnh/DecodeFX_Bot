@@ -115,7 +115,7 @@ class BotLLMModel:
             samples = suitable_questions
         return samples
 
-    def find_best_answer(self, query, threshold=0.7):
+    def find_best_answer(self, query, threshold=0.6):
         try:
             query = query.strip()
             logger.info(f"Processing query: {query}")

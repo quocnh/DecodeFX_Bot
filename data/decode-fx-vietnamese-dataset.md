@@ -21,9 +21,9 @@ cấu_trúc_dữ_liệu = {
 
 ### 1.1 Xác Minh KYC
 
-KHÁCH_HÀNG: "KYC bao lâu xong vậy em?"
+KHÁCH_HÀNG: "Xác minh KYC bao lâu xong vậy em?"
 BỐI_CẢNH: "Khách hàng mới hỏi về thời gian xác minh KYC"
-TRẢ_LỜI: "Dạ kyc tự động trong 5-10ph sẽ có email báo về TK khách số trading account, số MT4 và mật khẩu (dùng cho portal và MT4). Anh kiểm tra hộp thư đến hoặc mục thư spam để kiểm tra email đến nha"
+TRẢ_LỜI: "Dạ kyc tự động trong 5-10 phút sẽ có email báo về TK khách số trading account, số MT4 và mật khẩu (dùng cho portal và MT4). Anh kiểm tra hộp thư đến hoặc mục thư spam để kiểm tra email đến nha"
 NHÃN: ["kyc", "xác_minh", "tài_khoản_mới"]
 ĐỘ_ƯU_TIÊN: "cao"
 
@@ -89,6 +89,18 @@ KHÁCH_HÀNG: "Tiền vào tài khoản chính rồi mà sao MT4 vẫn chưa có
 BỐI_CẢNH: "Khách đã nạp tiền nhưng chưa thấy trong MT4"
 TRẢ_LỜI: "Chị có thể hỏi khách dùm e là khách đăng nhập lên MT4 bằng tài khoản nào được không c? Tiền vào tài khoản nào thì MT4 của khách cũng phải đăng nhập vào tài khoản đó thì mới thấy tiền được chị. Có thể khách đang đăng nhập MT4 bằng tài khoản rebate account đó chị."
 NHÃN: ["mt4", "nạp_tiền", "xác_minh_số_dư"]
+ĐỘ_ƯU_TIÊN: "cao"
+
+### 3.3 Khung giờ xử lý lệnh Rút
+
+KHÁCH_HÀNG: "Khung giờ nào xử lý lệnh Rút tiền?"
+BỐI_CẢNH: "Khách muốn biết khung giờ giao dịch"
+TRẢ_LỜI: "Theo múi giờ mùa hè Úc (Áp dụng cho cả USDT và ngân hàng).
+Rút tối thiểu USDT: 100$, Ngân hàng rút tối thiểu 50$.
+Trước 09:00 sáng rút,  13:00 - 14:00  tiền về trong ngày.
+Trước 13:00 trưa rút,  17:00 - 18:00 tiền về trong ngày.
+Thời gian còn lại làm lệnh rút thì 13:00-14:00 hôm sau tiền về. Trừ Thứ 6 nếu làm lệnh rút sau 13:00, và Thứ 7 hoặc CN rút tiền thì 13:00-14:00 Thứ 2 tiền về."
+NHÃN: ["nạp_tiền","rút_tiền"]
 ĐỘ_ƯU_TIÊN: "cao"
 
 ## 4. CHƯƠNG TRÌNH KHUYẾN MÃI

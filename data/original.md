@@ -21,9 +21,9 @@ cấu_trúc_dữ_liệu = {
 
 ### 1.1 Xác Minh KYC
 
-KHÁCH_HÀNG: "KYC bao lâu xong vậy em?"
+KHÁCH_HÀNG: "Xác minh KYC bao lâu xong vậy em?"
 BỐI_CẢNH: "Khách hàng mới hỏi về thời gian xác minh KYC"
-TRẢ_LỜI: "Dạ kyc tự động trong 5-10ph sẽ có email báo về TK khách số trading account, số MT4 và mật khẩu (dùng cho portal và MT4). Anh kiểm tra hộp thư đến hoặc mục thư spam để kiểm tra email đến nha"
+TRẢ_LỜI: "Dạ kyc tự động trong 5-10 phút sẽ có email báo về TK khách số trading account, số MT4 và mật khẩu (dùng cho portal và MT4). Anh kiểm tra hộp thư đến hoặc mục thư spam để kiểm tra email đến nha."
 NHÃN: ["kyc", "xác_minh", "tài_khoản_mới"]
 ĐỘ_ƯU_TIÊN: "cao"
 
