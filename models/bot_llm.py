@@ -235,7 +235,7 @@ class BotLLMModel:
 
             # Expanded list of Vietnamese confirmations
             confirmations = {
-                'yes', 'đúng', 'đúng rồi', 'yes đúng', 'phải', 'đúng vậy', 'y', 'ok',
+                'yes', 'ừ', 'u', 'đúng', 'đúng rồi', 'yes đúng', 'phải', 'đúng vậy', 'y', 'ok',
                 'ừ', 'ừm', 'uhm', 'um', 'uh', 'uk', 'đúng rùi', 'đúng òi', 'ừa',
                 'đúng ạ', 'vâng', 'vâng ạ', 'dạ', 'dạ đúng', 'dạ phải', 'đúng đó',
                 'phải rồi', 'chính xác', 'đúng thế', 'chính xác'
