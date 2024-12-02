@@ -118,6 +118,57 @@ class BotLLMModel:
             samples = suitable_questions
         return samples
 
+    def _is_keyword_query(self, query: str) -> bool:
+        """Check if the query is just a keyword or very short phrase"""
+        keywords = {
+            'KYC': 'xác minh danh tính',
+            'MT4': 'platform giao dịch',
+            'USDT': 'tiền điện tử',
+            'BTC': 'bitcoin',
+            'ECN': 'tài khoản ECN',
+            'IB': 'đối tác giới thiệu',
+            'PAMM': 'quản lý vốn',
+            'SWAP': 'phí qua đêm',
+            'BONUS': 'khuyến mãi',
+            'COMMISSION': 'hoa hồng',
+            'FREESWAP': 'miễn phí qua đêm',
+            'MARGIN': 'ký quỹ',
+            'LOT': 'khối lượng giao dịch'
+        }
+        
+        # Clean and normalize query
+        clean_query = self._refine_query(query)
+        
+        # Check if query is just a keyword
+        for keyword in keywords:
+            if clean_query.upper() == keyword:
+                return True, keyword
+                
+        return False, None
+
+    def _find_related_questions(self, keyword: str, max_questions: int = 5) -> list:
+        """Find questions related to a specific keyword"""
+        related_questions = []
+        
+        # Create keyword embedding
+        keyword_embedding = self.model.encode([keyword])[0]
+        
+        # Get similarities with all questions
+        similarities = cosine_similarity([keyword_embedding], self.question_embeddings)[0]
+        
+        # Get indices of top matching questions
+        top_indices = np.argsort(similarities)[-max_questions:][::-1]
+        
+        # Get the questions and their similarities
+        for idx in top_indices:
+            if similarities[idx] > 0.3:  # Minimum similarity threshold
+                related_questions.append({
+                    'question': self.original_questions[idx],
+                    'similarity': similarities[idx]
+                })
+        
+        return related_questions
+
     def _refine_query(self, query: str) -> str:
         """Refine and normalize the query for better matching."""
         # Step 1: Normalize whitespace
@@ -136,6 +187,14 @@ class BotLLMModel:
             'usdt': 'USDT',
             'btc': 'BTC',
             'ecn': 'ECN',
+            'ib': 'IB',
+            'pamm': 'PAMM',
+            'swap': 'SWAP',
+            'bonus': 'BONUS',
+            'commission': 'COMMISSION',
+            'freeswap': 'FREESWAP',
+            'margin': 'MARGIN',
+            'lot': 'LOT'
         }
         
         for key, value in keyword_mapping.items():
@@ -148,12 +207,17 @@ class BotLLMModel:
             "i would like to know": "tell me",
             "could you": "please",
             "i am wondering": "tell me",
+            "cho mình hỏi": "hỏi",
+            "cho em hỏi": "hỏi",
+            "chị ơi": "",
+            "anh ơi": "",
+            "em ơi": ""
         }
         for phrase, replacement in transformations.items():
             query = query.replace(phrase, replacement)
         
         # Step 6: Remove stopwords
-        stopwords = {"the", "a", "an", "is", "am", "are", "was", "were", "and", "or"}
+        stopwords = {"the", "a", "an", "is", "am", "are", "was", "were", "and", "or", "về", "của", "này"}
         tokens = query.split()
         tokens = [token for token in tokens if token.lower() not in stopwords]
         
@@ -163,7 +227,7 @@ class BotLLMModel:
         logger.debug(f"Refined query: {refined_query}")
         return refined_query
 
-    def find_best_answer(self, raw_query, threshold=0.7):
+    def find_best_answer(self, raw_query, threshold=0.6):
         """Find the best matching answer for a given query."""
         try:
             query = self._refine_query(raw_query)
@@ -177,6 +241,18 @@ class BotLLMModel:
                     response += f"{i}. {question}\n"
                 logger.info("Returning sample questions for general query")
                 return response
+
+            # Check if query is a keyword
+            is_keyword, keyword = self._is_keyword_query(query)
+            if is_keyword:
+                related = self._find_related_questions(keyword)
+                if related:
+                    response = f"Có một số câu hỏi liên quan đến {keyword}:\n\n"
+                    for i, q in enumerate(related, 1):
+                        response += f"{i}. {q['question']}\n"
+                    response += "\nBạn có thể hỏi cụ thể hơn về vấn đề bạn quan tâm?"
+                    logger.info(f"Returning related questions for keyword: {keyword}")
+                    return response
 
             # Normal processing for specific queries
             query_embedding = self.model.encode([query])
