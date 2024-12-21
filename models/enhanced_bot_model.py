@@ -125,7 +125,14 @@ class EnhancedBotModel:
     def find_best_answer(self, query: str, chat_id: str = None, context: str = None, previous_response: str = None) -> str:
         # Check if this is a confirmation of a previous suggestion
         if chat_id and chat_id in self.last_suggestions:
-            if any(word.lower() in query.lower() for word in ['đúng', 'yes', 'phải', 'ừ', 'đúng rồi', 'ok']):
+            confirmation_words = {
+                'đúng', 'yes', 'phải', 'ừ', 'đúng rồi', 'ok', 
+                'uhm', 'uh', 'ừm', 'um', 'vâng', 'vang', 
+                'dạ', 'da', 'uk', 'đúng vậy', 'chính xác',
+                'y', 'đúng ạ', 'vâng ạ', 'dạ đúng', 'dạ phải',
+                'đúng đó', 'phải rồi', 'ứ', 'ừa', 'ua'
+            }
+            if any(word.lower() in query.lower() for word in confirmation_words):
                 answer = self.last_suggestions[chat_id]['answer']
                 del self.last_suggestions[chat_id]  # Clear the suggestion
                 return answer
