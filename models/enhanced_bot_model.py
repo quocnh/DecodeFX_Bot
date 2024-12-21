@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
+from text_processing_helper import TextProcessor
 import numpy as np
 from typing import List, Dict, Tuple
 import re
@@ -9,6 +10,8 @@ class EnhancedBotModel:
         self.base_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         self.load_dataset(dataset_path)
         self.context_mapping = self._build_context_mapping()
+        self.text_processor = TextProcessor()
+        self.last_suggestions = {}
         
     def load_dataset(self, dataset_path):
         # Original dataset loading code remains the same
@@ -119,7 +122,34 @@ class EnhancedBotModel:
                     self.entities[entity_type][match]['topics'].add(topic)
                     self.entities[entity_type][match]['contexts'].add(qa_pair['context'])
 
-    def find_best_answer(self, query: str, context: str = None, previous_response: str = None) -> str:
+    def find_best_answer(self, query: str, chat_id: str = None, context: str = None, previous_response: str = None) -> str:
+        # Check if this is a confirmation of a previous suggestion
+        if chat_id and chat_id in self.last_suggestions:
+            if any(word.lower() in query.lower() for word in ['đúng', 'yes', 'phải', 'ừ', 'đúng rồi', 'ok']):
+                answer = self.last_suggestions[chat_id]['answer']
+                del self.last_suggestions[chat_id]  # Clear the suggestion
+                return answer
+
+        # Process and fix the query
+        fixed_query, needs_confirmation, original = self.text_processor.fix_question(query)
+        
+        # If the question needs confirmation, store the potential answer and ask for confirmation
+        if needs_confirmation:
+            # Try to find the best matching question
+            similar_q, similarity = self.text_processor.find_similar_question(
+                fixed_query, 
+                [qa['question'] for qa in self.qa_pairs]
+            )
+            
+            if similarity > 0.6:  # Threshold for suggesting
+                for qa in self.qa_pairs:
+                    if qa['question'] == similar_q:
+                        if chat_id:
+                            self.last_suggestions[chat_id] = {
+                                'answer': qa['answer'],
+                                'original_query': original
+                            }
+                        return f"Có phải bạn muốn hỏi: '{similar_q}'?"
         """Enhanced answer finding with reasoning capabilities"""
         # 1. Direct matching attempt
         direct_match = self._find_direct_match(query)

@@ -88,7 +88,12 @@ class TelegramInterface:
             
             # Process message
             try:
-                answer = self.bot_model.find_best_answer(question)
+                answer = self.bot_model.find_best_answer(
+                    question,
+                    chat_id=str(chat_id),
+                    context=chat_context.get('last_message'),
+                    previous_response=chat_context.get('last_response')
+                )
             except Exception as e:
                 logger.error(f"Error getting answer from bot model: {str(e)}")
                 answer = None
