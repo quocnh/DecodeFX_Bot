@@ -1,5 +1,31 @@
 # DecodeFX_Bot
-A complete pipeline for DEcodeFX customer service chatbot.
+
+The DecodeFX Support Bot is an advanced customer service chatbot designed specifically for the forex trading platform DecodeFX. Built using state-of-the-art natural language processing techniques, the bot provides instant, accurate responses to customer inquiries in both Vietnamese and English, focusing on trading-related questions, account management, and platform support.
+## Key Features
+### Multilingual Support
+
+- Seamlessly handles both Vietnamese and English queries
+- Processes Vietnamese text with or without diacritics
+- Understands informal language and regional variations
+
+### Intelligent Query Processing
+
+- Uses semantic similarity matching for accurate response selection
+- Handles misspellings and partial words
+- Implements fuzzy matching for better query understanding
+- Provides confirmation requests for ambiguous queries
+
+### Context-Aware Conversations
+
+- Maintains conversation context for better response accuracy
+- Understands follow-up questions
+- Processes conversation history for more relevant responses
+
+### Advanced Natural Language Processing
+
+- Employs the SentenceTransformer model for semantic understanding
+- Uses smart confirmation detection for natural dialogue flow
+- Implements context mapping for better response accuracy
 
 ## 1. Data Processing:
 
