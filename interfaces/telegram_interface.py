@@ -1,11 +1,11 @@
-# interfaces/telegram_interface.py
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from config import TELEGRAM_TOKEN, DEFAULT_RESPONSE, logger
+from datetime import datetime
 
 class TelegramInterface:
     def __init__(self, bot_model):
-        logger.info("Initializing Telegram Interface")
+        logger.info("Initializing Enhanced Telegram Interface")
         self.bot_model = bot_model
         self.app = Application.builder().token(TELEGRAM_TOKEN).build()
         
@@ -16,6 +16,9 @@ class TelegramInterface:
             (filters.ChatType.PRIVATE | filters.ChatType.GROUPS), 
             self.handle_message
         ))
+        
+        # Store conversation context
+        self.conversation_context = {}
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
@@ -29,12 +32,6 @@ class TelegramInterface:
         )
 
     def should_respond(self, update: Update) -> bool:
-        """
-        Determine if the bot should respond to this message.
-        Returns True if:
-        1. It's a private chat
-        2. It's a group chat and the bot is mentioned
-        """
         chat_type = update.effective_chat.type
         message = update.message
         bot_username = self.app.bot.username
@@ -44,25 +41,20 @@ class TelegramInterface:
             logger.info("Responding to private chat message")
             return True
 
-        # In groups, only respond if bot is mentioned
+        # In groups, check for mentions
         if chat_type in ['group', 'supergroup']:
-            # Check if message has entities (mentions, etc.)
             if message.entities:
                 for entity in message.entities:
                     if entity.type == 'mention':
-                        # Get the mentioned username
                         mentioned = message.text[entity.offset:entity.offset + entity.length]
                         if mentioned == f"@{bot_username}":
-                            logger.info("Responding to group message where bot was mentioned")
+                            logger.info("Responding to group message with direct mention")
                             return True
             return False
 
         return False
 
     def extract_question(self, message_text: str, bot_username: str) -> str:
-        """
-        Extract the actual question from the message, removing the bot mention if present.
-        """
         # Remove bot username from the message
         clean_text = message_text.replace(f"@{bot_username}", "").strip()
         return clean_text
@@ -78,6 +70,7 @@ class TelegramInterface:
             username = update.effective_user.username
             chat_type = update.effective_chat.type
             message_text = update.message.text
+            chat_id = update.effective_chat.id
             
             logger.info(f"""
                 Received message:
@@ -90,20 +83,35 @@ class TelegramInterface:
             # Extract the actual question
             question = self.extract_question(message_text, self.app.bot.username)
             
+            # Get chat context if available
+            chat_context = self.conversation_context.get(chat_id, {})
+            
             # Process message
-            answer = self.bot_model.find_best_answer(question)
+            try:
+                answer = self.bot_model.find_best_answer(question)
+            except Exception as e:
+                logger.error(f"Error getting answer from bot model: {str(e)}")
+                answer = None
             
             if answer:
                 logger.info(f"Sending answer to User {user_id}: {answer[:100]}...")
                 await update.message.reply_text(answer)
+                # Update conversation context
+                self.conversation_context[chat_id] = {
+                    'last_message': message_text,
+                    'last_response': answer,
+                    'timestamp': datetime.now().timestamp()
+                }
             else:
                 logger.info(f"Sending default response to User {user_id}")
                 await update.message.reply_text(DEFAULT_RESPONSE)
                 
         except Exception as e:
             logger.error(f"Error handling message: {str(e)}")
-            await update.message.reply_text("Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.")
+            await update.message.reply_text(
+                "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau hoặc liên hệ bộ phận CSKH."
+            )
 
     def run(self):
-        logger.info("Starting Telegram bot")
+        logger.info("Starting Enhanced Telegram bot")
         self.app.run_polling()

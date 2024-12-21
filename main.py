@@ -5,24 +5,24 @@ import sys
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(project_root)
 
-from models.bot_llm import BotLLMModel
+from models.enhanced_bot_model import EnhancedBotModel  # Make sure this path matches your file structure
 from interfaces.telegram_interface import TelegramInterface
 from config import logger
 
 def main():
     try:
-        logger.info("Starting DecodeFX Bot")
+        logger.info("Starting DecodeFX Bot with Enhanced Reasoning")
         
-        # Initialize the bot model with your dataset
+        # Initialize the enhanced bot model with your dataset
         dataset_path = os.path.join(project_root, 'data', 'decode-fx-vietnamese-dataset.md')
-        logger.info("Initializing bot model...")
-        bot_model = BotLLMModel(dataset_path)
+        logger.info("Initializing enhanced bot model...")
+        bot_model = EnhancedBotModel(dataset_path)
         
         # Initialize and run the Telegram interface
         logger.info("Initializing Telegram interface...")
         telegram_interface = TelegramInterface(bot_model)
         
-        logger.info("Bot is ready to serve!")
+        logger.info("Enhanced Bot is ready to serve!")
         telegram_interface.run()
         
     except Exception as e:
